@@ -35,7 +35,7 @@ def forward_rating(row):
 def center_rating(row):
     return row['USG_PCT']*(row['PIE']+((row['NET_RATING']/2)+(((row['AST_PCT']/2)+(row['REB_PCT']*2.25))/12)))
 
-def update_team_ratings():
+def initialize_team_ratings():
     team_ratings = {}
     find_max_team_stats()
     for index, row in stats.teams_advanced.iterrows():
@@ -48,7 +48,7 @@ def update_team_ratings():
         team_ratings[row['TEAM_ID']] = normalize(rating, 'team')
     return team_ratings
 
-def update_player_ratings():
+def initialize_player_ratings():
     player_ratings = {}
     for index, row in stats.players_advanced.iterrows():
         pos = stats.get_player_position(row['PLAYER_ID'])
@@ -59,4 +59,4 @@ def update_player_ratings():
         else:
             rating = center_rating(row)
         player_ratings[row['PLAYER_ID']] = [normalize(rating, 'player'), row['TEAM_ID']]
-
+    return player_ratings
