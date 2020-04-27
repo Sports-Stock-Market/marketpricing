@@ -11,3 +11,4 @@ teams_advanced = leaguedashteamstats.LeagueDashTeamStats(measure_type_detailed_d
 
 players_basic = leaguedashplayerstats.LeagueDashPlayerStats().get_data_frames()[0]
 players_advanced = leaguedashplayerstats.LeagueDashPlayerStats(measure_type_detailed_defense='Advanced').get_data_frames()[0]
+players_raptor = pd.read_csv('latest_RAPTOR_by_player.csv')
