@@ -3,20 +3,22 @@ import pandas as pd
 import nba_data
 
 class Player:
-    def __init__(self, id, team, info_df=nba_data.players_advanced, raptor_df=nba_data.players_raptor):
-        self.id = id
-        self.info = info_df.loc[info_df['PLAYER_ID'] == self.id]
-        self.first_name = self.info['PLAYER_NAME'].split()[0]
-        self.last_name = self.info['PLAYER_NAME'].split()[1]
-        self.teamid = self.info['TEAM_ID']
+    def __init__(self, info_row, raptor_df=nba_data.players_raptor):
+        self.info = info_row
+        self.id = self.info['PLAYER_ID']
+        self.name = self.info['PLAYER_NAME']
+        self.first_name = self.name.split()[0]
+        self.last_name = self.name.split()[1]
+        self.team_id = self.info['TEAM_ID']
+        self.team = None
         self.mpg = self.info['MIN']
-        self.adv = raptor_df.loc[raptor_df['Player_name'] == self.first_name + ' ' + self.last_name]
+        self.adv = raptor_df.loc[raptor_df['player_name'] == self.first_name + ' ' + self.last_name]
         self.raptor = {
-            'offense': self.adv['Raptor_offense'],
-            'defense': self.adv['Raptor_defense'],
-            'total': self.adv['Raptor_total']
+            'offense': self.adv['raptor_offense'],
+            'defense': self.adv['raptor_defense'],
+            'total': self.adv['raptor_total']
         }
-        self.war = self.adv_stats['War_total']
+        self.war = self.adv['war_total']
         self.status = True
     
     def injury(self, duration):
@@ -38,14 +40,13 @@ class Team:
         'DEF_RATING': [2, 0]
     }
 
-    def __init__(self, id, players):
-        self.id = id
-        self.info = df.loc[df['TEAM_ID'] == self.id]
-        self.city = self.info['TEAM_ID'].split()[0]
-        self.name = self.info['TEAM_ID'].split()[1]
+    def __init__(self, players, info_row):
+        self.info = info_row
+        self.id = info_df['TEAM_ID']
+        self.city = self.info['TEAM_NAME'].split()[0]
+        self.name = self.info['TEAM_NAME'].split()[1]
         self.players = players
-        self.curr_rating = self.update_rating()
-        self.proj_rating = self.update_rating(proj=True)
+        self.curr_rating = self.update_curr_rating()
         self.raptor = {
             'offense': 0,
             'defense': 0,
@@ -53,7 +54,7 @@ class Team:
         }
         self.update_all_raptor()
 
-    def update_info(self, df=df=nba_data.teams_advanced):
+    def update_info(self, df=nba_data.teams_advanced):
         self.info = df.loc[df['TEAM_ID'] == self.id]
 
     def update_curr_rating(self):
@@ -87,7 +88,11 @@ def trade(p1, p2):
     p2.team = team1
 
 def init_players(df=nba_data.players_advanced):
-    pass
+    return [Player(row) for index, row in df.iterrows()]
 
 def init_teams(players, df=nba_data.teams_advanced):
-    pass
+    teams = []
+    for index, row in df.iterrows():
+        team_players = list(filter(lambda x: x.team_id == row['TEAM_ID'], players))
+        teams.append(Team(team_players, row))
+    return teams
