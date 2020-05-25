@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import datetime
 import nba_data
 
 class Player:
@@ -21,7 +22,7 @@ class Player:
         self.war = self.adv['war_total']
         self.status = True
     
-    def injury(self, duration):
+    def injury(self):
         self.status = False
         self.team.update_all_raptor()
         
@@ -32,12 +33,6 @@ class Team:
         'OFF_RATING': [4, 0],
         'DEF_RATING': [3, 0],
         'PIE': [5, 0]
-    }
-
-    proj_stats = {
-        'W_PCT': [4, 0],
-        'OFF_RATING': [3, 0],
-        'DEF_RATING': [2, 0]
     }
 
     def __init__(self, players, info_row):
@@ -79,6 +74,43 @@ class Team:
             cls.curr_stats[stat][1] = df[stat].max()
         return cls.curr_stats
 
+class Game:
+    def __init__(self, date, home_team, away_team, home_score, away_score):
+        self.date = date
+        self.home_team = home_team
+        self.away_team = away_team
+        self.home_score = home_score
+        self.away_score = away_score
+                
+    def predict(self):
+        pass
+ 
+class Schedule:
+    def __init__(self, end_yr, teams):
+        self.data = nba_data.get_season_schedule(end_yr)
+        self.yr = nba_data.format_year(end_yr-1)
+        self.games = {}
+        self.dates = []
+        self.curr_date = 0
+        for index, row in self.data.iterrows():
+            date_info = list(map(int, row['start_time'][:10].split('-')))
+            date = datetime.date(*date_info)
+            if date not in self.dates:
+                self.dates.append(date)
+            game = Game(date, find_team(teams, row['home_team']), find_team(teams, row['away_team']), row['home_team_score'], row['away_team_score'])
+            if date not in list(self.games.keys()):
+                self.games[date] = [game]
+            else:
+                self.games[date].append(game)
+        
+        def curr_games(self):
+            return self.games[self.dates[self.curr_date]]
+        
+        def advance(self):
+            self.curr_date += 1
+            return self.curr_date()
+
+
 def trade(p1, p2):
     team1 = p1.team
     team2 = p2.team
@@ -88,11 +120,24 @@ def trade(p1, p2):
     p2.team = team1
 
 def init_players(df=nba_data.players_advanced):
-    return [Player(row) for index, row in df.iterrows()]
+    return [Player(row) for index, row in df.iterrows()].sort(key=lambda x: x.last_name)
 
 def init_teams(players, df=nba_data.teams_advanced):
     teams = []
     for index, row in df.iterrows():
         team_players = list(filter(lambda x: x.team_id == row['TEAM_ID'], players))
         teams.append(Team(team_players, row))
-    return teams
+    return teams.sort(key=lambda x: x.city)
+
+def find_team(sorted_teams, name):
+    low = 0
+    high = len(sorted_teams) - 1
+    while low <= high:
+        middle = (low + high)//2
+        if sorted_teams[middle].city == name:
+            return sorted_teams[middle]
+        elif sorted_teams[middle].city > name:
+            high = middle - 1
+        else:
+            low = middle + 1
+    return -1
