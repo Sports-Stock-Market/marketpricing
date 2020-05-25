@@ -94,11 +94,10 @@ class Schedule:
         self.curr_date = 0
         for index, row in self.data.iterrows():
             date_info = list(map(int, row['start_time'][:10].split('-')))
-            date = datetime.date(*date_info)
+            date = datetime.date(*date_info)             
+            game = Game(date, find_team(teams, row['home_team']), find_team(teams, row['away_team']), row['home_team_score'], row['away_team_score'])
             if date not in self.dates:
                 self.dates.append(date)
-            game = Game(date, find_team(teams, row['home_team']), find_team(teams, row['away_team']), row['home_team_score'], row['away_team_score'])
-            if date not in list(self.games.keys()):
                 self.games[date] = [game]
             else:
                 self.games[date].append(game)
