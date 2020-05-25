@@ -108,7 +108,7 @@ class Schedule:
         
         def advance(self):
             self.curr_date += 1
-            return self.curr_date()
+            return self.curr_games()
 
 
 def trade(p1, p2):

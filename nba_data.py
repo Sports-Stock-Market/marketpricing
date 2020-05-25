@@ -47,6 +47,3 @@ teams_advanced = leaguedashteamstats.LeagueDashTeamStats(measure_type_detailed_d
 players_basic = leaguedashplayerstats.LeagueDashPlayerStats(headers=headers).get_data_frames()[0]
 players_advanced = leaguedashplayerstats.LeagueDashPlayerStats(measure_type_detailed_defense='Advanced', headers=headers).get_data_frames()[0]
 players_raptor = pd.read_csv('./player_info/latest_RAPTOR_by_player.csv')
-
-a = list(map(int, get_season_schedule(2011)['start_time'][0][:10].split('-')))
-print(datetime.date(*a).day)
