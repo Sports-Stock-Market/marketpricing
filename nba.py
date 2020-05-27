@@ -1,19 +1,29 @@
 import numpy as np
 import pandas as pd
+import statistics
+from scipy.stats import norm
 import datetime
+import string
 import nba_data
 
 class Player:
-    def __init__(self, info_row, raptor_df=nba_data.players_raptor):
+    def __init__(self, info_row, raptor_df):
         self.info = info_row
         self.id = self.info['PLAYER_ID']
-        self.name = self.info['PLAYER_NAME']
-        self.first_name = self.name.split()[0]
-        self.last_name = self.name.split()[1]
+        self.full_name = self.info['PLAYER_NAME']
+        if len(self.full_name.split()) > 1:
+            self.first_name = self.full_name.split()[0]
+            if len(self.full_name.split()[1:]) > 1:
+                self.last_name = ' '.join(self.full_name.split()[1:])
+            else:
+                self.last_name = self.full_name.split()[1]
+        else:
+            self.first_name = ''
+            self.last_name = self.full_name
         self.team_id = self.info['TEAM_ID']
         self.team = None
         self.mpg = self.info['MIN']
-        self.adv = raptor_df.loc[raptor_df['player_name'] == self.first_name + ' ' + self.last_name]
+        self.adv = raptor_df.loc[raptor_df['player_name'] == self.full_name]
         self.raptor = {
             'offense': self.adv['raptor_offense'],
             'defense': self.adv['raptor_defense'],
@@ -22,6 +32,20 @@ class Player:
         self.war = self.adv['war_total']
         self.status = True
     
+    def __str__(self):
+        return self.full_name
+
+    def __repr__(self):
+        return str(self)
+
+    def __eq__(self, other):
+        return self.full_name == other.full_name
+    
+    def __lt__(self, other):
+        if self.last_name == other.last_name:
+            return self.first_name < other.first_name
+        return self.last_name < other.last_name
+
     def injury(self):
         self.status = False
         self.team.update_all_raptor()
@@ -29,7 +53,6 @@ class Player:
 class Team:
     curr_stats = {
         'W_PCT': [5, 0],
-        'NET_RATING': [3, 0],
         'OFF_RATING': [4, 0],
         'DEF_RATING': [3, 0],
         'PIE': [5, 0]
@@ -37,30 +60,57 @@ class Team:
 
     def __init__(self, players, info_row):
         self.info = info_row
-        self.id = info_df['TEAM_ID']
-        self.city = self.info['TEAM_NAME'].split()[0]
-        self.name = self.info['TEAM_NAME'].split()[1]
+        self.id = self.info['TEAM_ID']
+        self.full_name = self.info['TEAM_NAME']
+        city_len = len(self.full_name.split()[::-1][1:])
+        self.city = self.full_name.split()[:city_len]
+        if city_len > 1:
+            self.city = " ".join(self.city)
+        else:
+            self.city = self.city[0]
+        self.name = self.full_name.split()[city_len]
         self.players = players
-        self.curr_rating = self.update_curr_rating()
+        self.rating = self.update_rating()
         self.raptor = {
             'offense': 0,
             'defense': 0,
             'total': 0
         }
         self.update_all_raptor()
+        self.games_played = 0
+        self.games_left = 82
+        self.proj_wins = 0
+        self.all_ratings = []
 
-    def update_info(self, df=nba_data.teams_advanced):
-        self.info = df.loc[df['TEAM_ID'] == self.id]
+    def __str__(self):
+        return self.full_name
 
-    def update_curr_rating(self):
-        cls.update_max_stats()
-        self.update_info()
-        weight = lambda a_dict, key: a_dict[key][0] * (self.info[key]/a_dict[key][1])
-        self.rating = 3*sum([weight(self.curr_stats, stat) for stat in self.curr_stats]) 
-        return self.rating
+    def __repr__(self):
+        return str(self)
+
+    def __eq__(self, other):
+        return self.full_name == other.full_name
+    
+    def __lt__(self, other):
+        return self.full_name < other.full_name
+
+    def update(self):
+        pass
+
+    def update_info(self, row):
+        self.info = row
+
+    def update_rating(self):
+        # Team.update_max_stats()
+        # self.update_info()
+        # weight = lambda a_dict, key: a_dict[key][0] * (self.info[key]/a_dict[key][1])
+        # self.rating = 3*sum([weight(self.curr_stats, stat) for stat in self.curr_stats]) 
+        # self.all_ratings.append(self.rating)
+        # return self.rating
+        pass
 
     def update_raptor(self, category):
-        self.raptor[category] = sum([player.raptor[category] for player in players if player.status])
+        self.raptor[category] = sum([player.raptor[category]*player.mpg for player in self.players if player.status])
         return self.raptor[category]
     
     def update_all_raptor(self):
@@ -68,11 +118,11 @@ class Team:
             self.update_raptor(category)
         return self.raptor
 
-    @classmethod
-    def update_max_stats(cls, df=nba_data.teams_advanced):
-        for stat in cls.curr_stats:
-            cls.curr_stats[stat][1] = df[stat].max()
-        return cls.curr_stats
+    # @classmethod
+    # def update_max_stats(cls, df=nba_data.teams_advanced):
+    #     for stat in cls.curr_stats:
+    #         cls.curr_stats[stat][1] = df[stat].max()
+    #     return cls.curr_stats
 
 class Game:
     def __init__(self, date, home_team, away_team, home_score, away_score):
@@ -81,34 +131,54 @@ class Game:
         self.away_team = away_team
         self.home_score = home_score
         self.away_score = away_score
+    
+    def __str__(self):
+        return '{} @ {}, {}'.format(self.away_team, self.home_team, nba_data.format_date(self.date))
                 
+    def __repr__(self):
+        return str(self)
+
+    def includes(self, team):
+        return team == self.home_team or team == self.away_team
+        
     def predict(self):
-        pass
+        self.home_team.games_played += 1
+        self.home_team.games_left -= 1
+        self.away_team.games_played += 1
+        self.away_team.games_left -= 1
+        es_home = statistics.mean([self.home_team.info['OFF_RATING'], self.away_team.info['DEF_RATING']])
+        es_away = statistics.mean([self.away_team.info['OFF_RATING'], self.home_team.info['DEF_RATING']])
+        margin = es_home - es_away
+        vary = self.home_team.info['W_PCT'] - self.away_team.info['W_PCT']
+        std = ((-2/10) * vary) + 14
+        self.home_team.proj_wins += 1 if norm.cdf(0, loc=margin, scale=std) > 0.5 else self.away_team.proj_wins += 1
+
  
-class Schedule:
-    def __init__(self, end_yr, teams):
-        self.data = nba_data.get_season_schedule(end_yr)
-        self.yr = nba_data.format_year(end_yr-1)
-        self.games = {}
+class Season:
+    def __init__(self, end_yr):
+        self.schedule = nba_data.get_season_schedule(end_yr)
+        self.yr = end_yr
+        self.teams = init_teams(end_yr)
         self.dates = []
-        self.curr_date = 0
-        for index, row in self.data.iterrows():
+        self.games = {}
+        self.stats = {}
+        for index, row in self.schedule.iterrows():
             date_info = list(map(int, row['start_time'][:10].split('-')))
             date = datetime.date(*date_info)             
-            game = Game(date, find_team(teams, row['home_team']), find_team(teams, row['away_team']), row['home_team_score'], row['away_team_score'])
+            game = Game(date, find_team(self.teams, string.capwords(row['home_team'])), find_team(self.teams, string.capwords(row['away_team'])), row['home_team_score'], row['away_team_score'])
             if date not in self.dates:
                 self.dates.append(date)
                 self.games[date] = [game]
+                self.stats[date] = nba_data.teams_stats_from(self.yr, date)
             else:
                 self.games[date].append(game)
         
-        def curr_games(self):
-            return self.games[self.dates[self.curr_date]]
-        
-        def advance(self):
-            self.curr_date += 1
-            return self.curr_games()
-
+        def has_game(self, name, date):
+            team = find_team(self.teams, name)
+            for game in self.games[date]:
+                if game.includes(team):
+                    return True
+            return False
 
 def trade(p1, p2):
     team1 = p1.team
@@ -118,24 +188,30 @@ def trade(p1, p2):
     p1.team = p2.team
     p2.team = team1
 
-def init_players(df=nba_data.players_advanced):
-    return [Player(row) for index, row in df.iterrows()].sort(key=lambda x: x.last_name)
+def init_players(end_yr):
+    info_df = nba_data.players_stats_from(end_yr)
+    raptor_df = nba_data.raptor_from(end_yr)
+    return sorted([Player(row, raptor_df) for index, row in info_df.iterrows()])
 
-def init_teams(players, df=nba_data.teams_advanced):
+def init_teams(end_yr):
+    df = nba_data.teams_stats_from(end_yr)
     teams = []
     for index, row in df.iterrows():
-        team_players = list(filter(lambda x: x.team_id == row['TEAM_ID'], players))
-        teams.append(Team(team_players, row))
-    return teams.sort(key=lambda x: x.city)
+        team_players = list(filter(lambda x: x.team_id == row['TEAM_ID'], init_players(end_yr)))
+        team = Team(team_players, row)
+        for player in team_players:
+            player.team = team
+        teams.append(team)
+    return sorted(teams)
 
 def find_team(sorted_teams, name):
     low = 0
     high = len(sorted_teams) - 1
     while low <= high:
         middle = (low + high)//2
-        if sorted_teams[middle].city == name:
+        if sorted_teams[middle].full_name == name:
             return sorted_teams[middle]
-        elif sorted_teams[middle].city > name:
+        elif sorted_teams[middle].full_name > name:
             high = middle - 1
         else:
             low = middle + 1
