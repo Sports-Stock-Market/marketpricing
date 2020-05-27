@@ -22,28 +22,32 @@ headers = {
     'Cache-Control': 'no-cache'
 }
 
-format_year = lambda yr: '{}-{}'.format(yr, str(yr+1)[-2:])
+format_year = lambda yr: '{}-{}'.format(yr-1, str(yr)[-2:])
 format_date = lambda date: '{}/{}/{}'.format(date.month, date.day, date.year)
 
 def get_player_position(id):
     return commonplayerinfo.CommonPlayerInfo(id).get_data_frames()[0].iloc[0]['POSITION']
 
-def teams_stats_from(yr, end_date):
-    return leaguedashteamstats.LeagueDashTeamStats(measure_type_detailed_defense='Advanced', season=format_year(yr), date_to_nullable=format_date(end_date), headers=headers).get_data_frames()[0]
+def teams_stats_from(end_yr, end_date=''):
+    if end_date:
+        end_date = format_date(end_date)
+    return leaguedashteamstats.LeagueDashTeamStats(measure_type_detailed_defense='Advanced', season=format_year(end_yr), date_to_nullable=end_date, headers=headers).get_data_frames()[0]
+
+def players_stats_from(end_yr, end_date=''):
+    if end_date:
+        end_date = format_date(end_date)
+    return leaguedashplayerstats.LeagueDashPlayerStats(measure_type_detailed_defense='Advanced', season=format_year(end_yr), date_to_nullable=end_date, headers=headers).get_data_frames()[0]
+
+def raptor_from(end_yr):
+    df = pd.read_csv('./player_info/raptors.csv')
+    return df.loc[df['season'] == end_yr-1]
 
 def new_season_schedule_csv(end_yr):
-    path = './schedules/{}_schedule.csv'.format(format_year(end_yr-1))
+    path = './schedules/{}_schedule.csv'.format(format_year(end_yr))
     client.season_schedule(season_end_year=end_yr, output_type=OutputType.CSV, output_file_path=path)
 
 def get_season_schedule(end_yr):
-    path = './schedules/{}_schedule.csv'.format(format_year(end_yr-1))
+    path = './schedules/{}_schedule.csv'.format(format_year(end_yr))
     if not os.path.isfile(path):
         new_season_schedule_csv(end_yr)
     return pd.read_csv(path)
-
-teams_basic = leaguedashteamstats.LeagueDashTeamStats(headers=headers).get_data_frames()[0]
-teams_advanced = leaguedashteamstats.LeagueDashTeamStats(measure_type_detailed_defense='Advanced', headers=headers).get_data_frames()[0]
-
-players_basic = leaguedashplayerstats.LeagueDashPlayerStats(headers=headers).get_data_frames()[0]
-players_advanced = leaguedashplayerstats.LeagueDashPlayerStats(measure_type_detailed_defense='Advanced', headers=headers).get_data_frames()[0]
-players_raptor = pd.read_csv('./player_info/latest_RAPTOR_by_player.csv')
