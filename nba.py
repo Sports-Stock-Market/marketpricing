@@ -51,7 +51,7 @@ class Player:
         
 class Team:
     stat_weights = {
-        'W_PCT': 0.45,
+        'W_PCT': 40,
         'OFF_RATING': 0.2,
         'DEF_RATING': 0.2,
         'PIE': 0.15
@@ -76,13 +76,14 @@ class Team:
             'total': 0
         }
         self.stats = {
-            'W_PCT': self.info['W_PCT'],
-            'OFF_RATING': self.info['OFF_RATING'],
-            'DEF_RATING': self.info['DEF_RATING'],
+            'W_PCT': 0.5,
+            'OFF_RATING': 100,
+            'DEF_RATING': 100,
             'PIE': self.info['PIE']
         }
         self.calc_raptor()
         self.proj_wins = 0
+        self.proj_games = 0
         self.all_ratings = []
 
     def __str__(self):
@@ -99,17 +100,19 @@ class Team:
 
     def update_stats(self, row):
         self.info = row
-        self.stats['OFF_RATING'] = self.info['OFF_RATING'] + self.raptor['offense']
-        self.stats['DEF_RATING'] = self.info['DEF_RATING'] + self.raptor['defense']
+        self.stats['OFF_RATING'] = self.info['OFF_RATING']# + self.raptor['offense']
+        self.stats['DEF_RATING'] = self.info['DEF_RATING']# + self.raptor['defense']
         self.stats['PIE'] = self.info['PIE']
 
     def update_wins(self):
-        self.stats['W_PCT'] = (self.info['W'] + self.proj_wins)/82
+        self.stats['W_PCT'] = (self.info['W'] + self.proj_wins)/(self.info['GP'] + self.proj_games)
+        print('{}:{}/{}, {}/{}'.format(self, self.info['W'], self.info['GP'], self.proj_wins, self.proj_games))
 
     def calc_rating(self):
         self.rating = round(sum([Team.stat_weights[stat]*self.stats[stat] for stat in Team.stat_weights]), 2)
         self.all_ratings.append(self.rating)
         self.proj_wins = 0
+        self.proj_games = 0
         return self.rating
     
     def calc_raptor(self):
@@ -141,12 +144,12 @@ class Game:
         margin = es_home - es_away
         vary = self.home_team.info['W_PCT'] - self.away_team.info['W_PCT']
         std = ((-2/10) * vary) + 14
-        if norm.cdf(0, loc=margin, scale=std) > 0.5:
-            winner = self.away_team
-        else:
-            winner = self.home_team
-        winner.proj_wins += 1
-        return winner
+        win_prob = norm.cdf(0, loc=margin, scale=std)
+        self.home_team.proj_games += 1
+        self.away_team.proj_games += 1
+        self.home_team.proj_wins += 1-win_prob
+        self.away_team.proj_wins += win_prob
+        return win_prob
 
  
 class Season:
@@ -157,16 +160,21 @@ class Season:
         self.dates = []
         self.games = {}
         self.stats = {}
+        global num_games
+        limit = num_games * 30
         for index, row in self.schedule.iterrows():
+            if limit == 0:
+                break
             date_info = list(map(int, row['start_time'][:10].split('-')))
             date = datetime.date(*date_info)             
             game = Game(date, find(self.teams, string.capwords(row['home_team'])), find(self.teams, string.capwords(row['away_team'])), row['home_team_score'], row['away_team_score'])
             if date not in self.dates:
                 self.dates.append(date)
                 self.games[date] = [game]
-                # self.stats[date] = nba_data.teams_stats_from(self.yr, date)
+                self.stats[date] = nba_data.teams_stats_from(self.yr, date)
             else:
                 self.games[date].append(game)
+            limit -= 1
         
         # def has_game(self, name, date):
         #     team = find(self.teams, name)
@@ -211,3 +219,5 @@ def find(sorted_list, name):
         else:
             low = middle + 1
     return -1
+
+num_games = 66

@@ -9,11 +9,12 @@ import nba_data
 def simulate(end_yr):
     season = nba.Season(end_yr)
     for curr in range(len(season.dates)):
-        # for index, row in season.stats[season.dates[curr]].iterrows():
-        #     nba.find(season.teams, row['TEAM_NAME']).update_stats(row)
+        for index, row in season.stats[season.dates[curr]].iterrows():
+            nba.find(season.teams, row['TEAM_NAME']).update_stats(row)
         for date in season.dates[curr:]:
-                for game in season.games[date]:
-                    game.predict() 
+            for game in season.games[date]:
+                game.predict()
+        print(nba_data.format_date(season.dates[curr]))
         for team in season.teams:
             team.update_wins()   
             team.calc_rating()
@@ -23,7 +24,7 @@ def simulate(end_yr):
     return ratings
 
 def win_predictor(end_yr):
-    season = Season(2014)
+    season = nba.Season(end_yr)
     total = 0
     correct = 0
     for date in season.dates:
@@ -33,3 +34,7 @@ def win_predictor(end_yr):
                 correct += 1
             print([game.winner, game.predict()])
     return(correct/total)
+
+ratings = simulate(2012)
+for team in ratings:
+    print(team, ratings[team])
