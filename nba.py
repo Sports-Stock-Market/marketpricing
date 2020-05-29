@@ -51,10 +51,11 @@ class Player:
         
 class Team:
     stat_weights = {
-        'W_PCT': 40,
-        'OFF_RATING': 0.2,
-        'DEF_RATING': 0.2,
-        'PIE': 0.15
+        'W_PCT': [0.5, 1],
+        # 'OFF_RATING': 0.2,
+        # 'DEF_RATING': 0.2,
+        'NET_RATING': [0.3, 1],
+        'PIE': [0.2, 1]
     }
 
     def __init__(self, players, info_row):
@@ -77,8 +78,9 @@ class Team:
         }
         self.stats = {
             'W_PCT': 0.5,
-            'OFF_RATING': 100,
-            'DEF_RATING': 100,
+            # 'OFF_RATING': 100,
+            # 'DEF_RATING': 100,
+            'NET_RATING': 0,
             'PIE': self.info['PIE']
         }
         self.calc_raptor()
@@ -100,8 +102,9 @@ class Team:
 
     def update_stats(self, row):
         self.info = row
-        self.stats['OFF_RATING'] = self.info['OFF_RATING']# + self.raptor['offense']
-        self.stats['DEF_RATING'] = self.info['DEF_RATING']# + self.raptor['defense']
+        # self.stats['OFF_RATING'] = self.info['OFF_RATING'] + self.raptor['offense']
+        # self.stats['DEF_RATING'] = self.info['DEF_RATING'] + self.raptor['defense']
+        self.stat_weights['NET_RATING'] = self.info['NET_RATING'] + self.raptor['total']
         self.stats['PIE'] = self.info['PIE']
 
     def update_wins(self):
@@ -109,7 +112,8 @@ class Team:
         print('{}:{}/{}, {}/{}'.format(self, self.info['W'], self.info['GP'], self.proj_wins, self.proj_games))
 
     def calc_rating(self):
-        self.rating = round(sum([Team.stat_weights[stat]*self.stats[stat] for stat in Team.stat_weights]), 2)
+        weight = lambda stat: Team.stat_weights[stat][0] * (self.stats[stat]/Team.stat_weights[stat][1])
+        self.rating = round(sum([weight(stat) for stat in Team.stat_weights]), 2)
         self.all_ratings.append(self.rating)
         self.proj_wins = 0
         self.proj_games = 0
@@ -119,6 +123,16 @@ class Team:
         for category in self.raptor:
             self.raptor[category] = sum([player.raptor[category]*player.mpg for player in self.players if player.status])
         return self.raptor
+    
+    @classmethod
+    def update_max_stats(cls, teams):
+        for stat in cls.stat_weights:
+            max_ = -100
+            for team in teams:
+                if team.stats[stat] > max_:
+                    max_ = team.stats[stat]
+            cls.stat_weights[stat][1] = max_
+        return cls.stat_weights
 
 class Game:
     def __init__(self, date, home_team, away_team, home_score, away_score):
@@ -139,8 +153,10 @@ class Game:
         return team == self.home_team or team == self.away_team
         
     def predict(self):
-        es_home = (self.home_team.stats['OFF_RATING'] + self.away_team.stats['DEF_RATING'])/2
-        es_away = (self.away_team.stats['OFF_RATING'] + self.home_team.stats['DEF_RATING'])/2
+        # es_home = (self.home_team.stats['OFF_RATING'] + self.away_team.stats['DEF_RATING'])/2
+        # es_away = (self.away_team.stats['OFF_RATING'] + self.home_team.stats['DEF_RATING'])/2
+        es_home = self.home_team.stats['NET_RATING']
+        es_away = self.away_team.stats['NET_RATING']
         margin = es_home - es_away
         vary = self.home_team.info['W_PCT'] - self.away_team.info['W_PCT']
         std = ((-2/10) * vary) + 14
@@ -161,7 +177,7 @@ class Season:
         self.games = {}
         self.stats = {}
         global num_games
-        limit = num_games * 30
+        limit = num_games
         for index, row in self.schedule.iterrows():
             if limit == 0:
                 break
@@ -220,4 +236,4 @@ def find(sorted_list, name):
             low = middle + 1
     return -1
 
-num_games = 66
+num_games = 20

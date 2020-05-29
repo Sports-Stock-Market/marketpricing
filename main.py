@@ -17,6 +17,7 @@ def simulate(end_yr):
         print(nba_data.format_date(season.dates[curr]))
         for team in season.teams:
             team.update_wins()   
+            nba.Team.update_max_stats(season.teams)
             team.calc_rating()
     ratings = {}
     for team in season.teams:
