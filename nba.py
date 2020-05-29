@@ -104,7 +104,7 @@ class Team:
         self.info = row
         # self.stats['OFF_RATING'] = self.info['OFF_RATING'] + self.raptor['offense']
         # self.stats['DEF_RATING'] = self.info['DEF_RATING'] + self.raptor['defense']
-        self.stat_weights['NET_RATING'] = self.info['NET_RATING'] + self.raptor['total']
+        self.stats['NET_RATING'] = self.info['NET_RATING'] #+ self.raptor['total']
         self.stats['PIE'] = self.info['PIE']
 
     def update_wins(self):
@@ -113,7 +113,7 @@ class Team:
 
     def calc_rating(self):
         weight = lambda stat: Team.stat_weights[stat][0] * (self.stats[stat]/Team.stat_weights[stat][1])
-        self.rating = round(sum([weight(stat) for stat in Team.stat_weights]), 2)
+        self.rating = round(5*(sum([weight(stat) for stat in Team.stat_weights])+10), 2)
         self.all_ratings.append(self.rating)
         self.proj_wins = 0
         self.proj_games = 0
