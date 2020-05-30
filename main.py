@@ -36,6 +36,6 @@ def win_predictor(end_yr):
             print([game.winner, game.predict()])
     return(correct/total)
 
-ratings = simulate(2012, 22)
+ratings = simulate(2012, 66)
 for team in ratings:
     print(team, ratings[team])

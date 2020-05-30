@@ -64,7 +64,7 @@ class Team:
     }
     max_raptor = 0
 
-    def __init__(self, players, info_row):
+    def __init__(self, players, info_row, proj):
         self.info = info_row
         self.id = self.info['TEAM_ID']
         self.full_name = self.info['TEAM_NAME']
@@ -76,24 +76,24 @@ class Team:
             self.city = self.city[0]
         self.name = self.full_name.split()[city_len]
         self.players = players
-        self.rating = 0
+        self.rating = round((6*(proj/47.5)-1), 2)
         self.raptor = {
             'offense': 0,
             'defense': 0,
             'total': 0
         }
         self.stats = {
-            'W_PCT': 0.5,
+            'W_PCT': proj/66,
             'OFF_RATING': 100,
             'DEF_RATING': 100,
             'NET_RATING': 0,
             'PIE': self.info['PIE']
         }
         self.calc_raptor()
+        self.updated = 0
         self.proj_wins = 0
         self.proj_games = 0
-        self.all_ratings = []
-
+        self.all_ratings = [self.rating]
 
     def __str__(self):
         return self.full_name
@@ -108,23 +108,29 @@ class Team:
         return self.full_name < other.full_name
 
     def update_stats(self, row):
+        self.updated += 1
         self.info = row
         self.stats['OFF_RATING'] = self.info['OFF_RATING'] #+ self.raptor['offense']
         self.stats['DEF_RATING'] = self.info['DEF_RATING'] #+ self.raptor['defense']
-        self.stats['NET_RATING'] = self.info['NET_RATING'] #+ self.raptor['total']
+        self.stats['NET_RATING'] = self.info['NET_RATING'] + 10#+ self.raptor['total']
         self.stats['PIE'] = self.info['PIE']
 
     def update_wins(self):
-        self.stats['W_PCT'] = (self.info['W'] + self.proj_wins)/(self.info['GP'] + self.proj_games)
-        print('{}:{}/{}, {}/{}'.format(self, self.info['W'], self.info['GP'], self.proj_wins, self.proj_games))
+        if self.updated > 0:
+            self.stats['W_PCT'] = (self.info['W'] + self.proj_wins)/(self.info['GP'] + self.proj_games)
+        # print(self.stats['W_PCT'])
 
     def calc_rating(self):
         weight = lambda stat: Team.stat_weights[stat][0] * (self.stats[stat]/Team.stat_weights[stat][1])
-        raptor_percent = 0.6*math.exp((-1/8)*self.info['GP'])
-        normalized = (1-raptor_percent)*(sum([weight(stat) for stat in Team.stat_weights])+10)
-        raptor_weight = raptor_percent*((self.raptor['total']/Team.max_raptor)+10)
-        self.rating = round(3*(normalized + raptor_weight), 2)
+        # prev_percent = 0.5*math.exp((-1/8)*self.info['GP'])
+        # normalized = (1-raptor_percent)*(sum([weight(stat) for stat in Team.stat_weights])+10)
+        # raptor_weight = raptor_percent*((self.raptor['total']/Team.max_raptor)+10)
+        # self.rating = round(3*(normalized + raptor_weight), 2)
         # self.rating = round(sum([weight(stat) for stat in Team.stat_weights])+10, 2)
+        new_rating = sum([weight(stat) for stat in Team.stat_weights])
+        # print(self, self.stats, new_rating)
+        # self.rating = round(3*((prev_percent*self.all_ratings[-1]) + ((1-prev_percent)*new_rating)), 2)
+        self.rating = round(3*(0.2*self.all_ratings[-1] + 0.8*new_rating), 2)
         self.all_ratings.append(self.rating)
         self.proj_wins = 0
         self.proj_games = 0
@@ -228,10 +234,12 @@ def init_players(end_yr):
 
 def init_teams(end_yr):
     df = nba_data.teams_stats_from(end_yr)
+    projs = nba_data.get_team_projections(end_yr)
     teams = []
     for index, row in df.iterrows():
         team_players = list(filter(lambda x: x.team_id == row['TEAM_ID'], init_players(end_yr)))
-        team = Team(team_players, row)
+        proj = projs.loc[projs['Team'] == row['TEAM_NAME']]['W-L O/U'].values[0]
+        team = Team(team_players, row, proj)
         for player in team.players:
             player.team = team
         teams.append(team)
