@@ -6,8 +6,8 @@ plt.style.use('fivethirtyeight')
 import nba
 import nba_data
 
-def simulate(end_yr):
-    season = nba.Season(end_yr)
+def simulate(end_yr, num_games):
+    season = nba.Season(end_yr, num_games)
     for curr in range(len(season.dates)):
         for index, row in season.stats[season.dates[curr]].iterrows():
             nba.find(season.teams, row['TEAM_NAME']).update_stats(row)
@@ -36,6 +36,6 @@ def win_predictor(end_yr):
             print([game.winner, game.predict()])
     return(correct/total)
 
-ratings = simulate(2012)
+ratings = simulate(2012, 22)
 for team in ratings:
     print(team, ratings[team])
