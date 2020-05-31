@@ -37,10 +37,11 @@ def simulate(end_yr, num_games, output_csv=False, graph=False):
         with open('output.csv', mode='w') as f:
             w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             w.writerow(['date'] + list(ratings.keys()))
-            for i in range(len(dates))
+            for i in range(len(dates)):
                 row = [dates[i]]
                 for team in list(ratings.keys()):
                     row.append(ratings[team][i])
+                w.writerow(row)
     if graph: 
         for team in list(ratings.keys()):
             plt.plot(dates, ratings[team], label=team)
@@ -48,7 +49,6 @@ def simulate(end_yr, num_games, output_csv=False, graph=False):
         plt.legend()
         plt.show()
     return []
-
 
 def win_predictor(end_yr):
     season = nba.Season(end_yr)
@@ -61,3 +61,5 @@ def win_predictor(end_yr):
                 correct += 1
             print([game.winner, game.predict()])
     return(correct/total)
+
+simulate(2012, 66, output_csv=True)
