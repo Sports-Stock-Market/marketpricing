@@ -44,7 +44,7 @@ def win_predictor(end_yr):
             print([game.winner, game.predict()])
     return(correct/total)
 
-dates, ratings = simulate(2012, 66)
+dates, ratings = simulate(2012, 20)
 dates.append('last')
 for team in list(ratings.keys()):
     plt.plot(dates, ratings[team], label=team)
