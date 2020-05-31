@@ -6,12 +6,36 @@ plt.style.use('fivethirtyeight')
 import nba
 import nba_data
 
-season = nba.Season(2011)
-for i in range(len(season.dates)):
-    for j in range(i, len(season.dates)):
-        for game in season.games[season.dates[j]]:
-            game.predict()
-    for index, row in season.stats[season.dates[i]].iterrows():
-        team = nba.find_team(season.teams, row['TEAM_NAME'])
-        team.update_info()
-        team.update_rating()
+def simulate(end_yr, num_games):
+    season = nba.Season(end_yr, num_games)
+    for curr in range(len(season.dates)):
+        for index, row in season.stats[season.dates[curr]].iterrows():
+            nba.find(season.teams, row['TEAM_NAME']).update_stats(row)
+        for date in season.dates[curr:]:
+            for game in season.games[date]:
+                game.predict()
+        print(nba_data.format_date(season.dates[curr]))
+        for team in season.teams:
+            team.update_wins()   
+            nba.Team.update_max_stats(season.teams)
+            team.calc_rating()
+    ratings = {}
+    for team in season.teams:
+        ratings[team.full_name] = team.all_ratings
+    return ratings
+
+def win_predictor(end_yr):
+    season = nba.Season(end_yr)
+    total = 0
+    correct = 0
+    for date in season.dates:
+        for game in season.games[date]:
+            total +=1
+            if game.winner == game.predict():
+                correct += 1
+            print([game.winner, game.predict()])
+    return(correct/total)
+
+ratings = simulate(2012, 66)
+for team in ratings:
+    print(team, ratings[team])

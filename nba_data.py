@@ -33,6 +33,10 @@ def teams_stats_from(end_yr, end_date=''):
         end_date = format_date(end_date)
     return leaguedashteamstats.LeagueDashTeamStats(measure_type_detailed_defense='Advanced', season=format_year(end_yr), date_to_nullable=end_date, headers=headers).get_data_frames()[0]
 
+def get_team_projections(end_yr):
+    path = './team_info/{}_projections.csv'.format(format_year(end_yr))
+    return pd.read_csv(path)
+
 def players_stats_from(end_yr, end_date=''):
     if end_date:
         end_date = format_date(end_date)
