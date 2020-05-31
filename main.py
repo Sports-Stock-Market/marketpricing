@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 plt.style.use('fivethirtyeight')
 import nba
 import nba_data
+import csv
 
-def simulate(end_yr, num_games):
+def simulate(end_yr, num_games, output_csv=False, graph=False):
     season = nba.Season(end_yr, num_games)
     for curr in range(len(season.dates)):
         if season.dates[curr] in season.injuries:
@@ -30,7 +31,24 @@ def simulate(end_yr, num_games):
     ratings = {}
     for team in season.teams:
         ratings[team.full_name] = team.all_ratings
-    return [list(map(nba_data.format_date, season.dates)), ratings]
+    dates = list(map(nba_data.format_date, season.dates))
+    dates.append('last')
+    if output_csv:
+        with open('output.csv', mode='w') as f:
+            w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            w.writerow(['date'] + list(ratings.keys()))
+            for i in range(len(dates))
+                row = [dates[i]]
+                for team in list(ratings.keys()):
+                    row.append(ratings[team][i])
+    if graph: 
+        for team in list(ratings.keys()):
+            plt.plot(dates, ratings[team], label=team)
+        plt.xticks(rotation=90, fontsize=8)
+        plt.legend()
+        plt.show()
+    return []
+
 
 def win_predictor(end_yr):
     season = nba.Season(end_yr)
@@ -43,11 +61,3 @@ def win_predictor(end_yr):
                 correct += 1
             print([game.winner, game.predict()])
     return(correct/total)
-
-dates, ratings = simulate(2012, 20)
-dates.append('last')
-for team in list(ratings.keys()):
-    plt.plot(dates, ratings[team], label=team)
-plt.xticks(rotation=90, fontsize=8)
-plt.legend()
-plt.show()
