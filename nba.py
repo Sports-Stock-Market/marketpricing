@@ -62,7 +62,6 @@ class Team:
         'NET_RATING': [0.3, 1],
         'PIE': [0.2, 1]
     }
-    max_raptor = 0
 
     def __init__(self, players, info_row, proj):
         self.info = info_row
@@ -76,7 +75,7 @@ class Team:
             self.city = self.city[0]
         self.name = self.full_name.split()[city_len]
         self.players = players
-        self.rating = round((6*(proj/47.5)-1), 2)
+        self.rating = round((proj/33), 2)
         self.raptor = {
             'offense': 0,
             'defense': 0,
@@ -122,15 +121,12 @@ class Team:
 
     def calc_rating(self):
         weight = lambda stat: Team.stat_weights[stat][0] * (self.stats[stat]/Team.stat_weights[stat][1])
-        # prev_percent = 0.5*math.exp((-1/8)*self.info['GP'])
-        # normalized = (1-raptor_percent)*(sum([weight(stat) for stat in Team.stat_weights])+10)
-        # raptor_weight = raptor_percent*((self.raptor['total']/Team.max_raptor)+10)
-        # self.rating = round(3*(normalized + raptor_weight), 2)
+        prev_percent = 0.4*math.exp((-1/2)*self.info['GP'])
         # self.rating = round(sum([weight(stat) for stat in Team.stat_weights])+10, 2)
         new_rating = sum([weight(stat) for stat in Team.stat_weights])
         # print(self, self.stats, new_rating)
-        # self.rating = round(3*((prev_percent*self.all_ratings[-1]) + ((1-prev_percent)*new_rating)), 2)
-        self.rating = round(3*(0.2*self.all_ratings[-1] + 0.8*new_rating), 2)
+        self.rating = round((prev_percent*self.all_ratings[-1])+((1-prev_percent)*new_rating), 2)
+        # self.rating = round(3*(0.2*self.all_ratings[-1] + 0.8*new_rating), 2)
         self.all_ratings.append(self.rating)
         self.proj_wins = 0
         self.proj_games = 0
@@ -146,23 +142,21 @@ class Team:
     def update_max_stats(cls, teams):
         for stat in cls.stat_weights:
             max_stat = -100
-            max_raptor = -100
             for team in teams:
                 if team.stats[stat] > max_stat:
                     max_stat = team.stats[stat]
-                if team.raptor['total'] > max_raptor:
-                    max_raptor = team.raptor['total']
             cls.stat_weights[stat][1] = max_stat
-            cls.max_raptor = max_raptor
+    
+    @classmethod
+    def update_avg_stats(cls, teams):
+        for stat in cls.stat_weights:
+            cls.stat_weights[stat][1] = sum([team.stats[stat] for team in teams])/30
 
 class Game:
-    def __init__(self, date, home_team, away_team, home_score, away_score):
+    def __init__(self, date, home_team, away_team):
         self.date = date
         self.home_team = home_team
         self.away_team = away_team
-        self.home_score = home_score
-        self.away_score = away_score
-        self.winner = self.home_team if home_score > away_score else self.away_team
     
     def __str__(self):
         return '{} @ {}, {}'.format(self.away_team, self.home_team, nba_data.format_date(self.date))
@@ -203,7 +197,7 @@ class Season:
                 break
             date_info = list(map(int, row['start_time'][:10].split('-')))
             date = datetime.date(*date_info)             
-            game = Game(date, find(self.teams, string.capwords(row['home_team'])), find(self.teams, string.capwords(row['away_team'])), row['home_team_score'], row['away_team_score'])
+            game = Game(date, find(self.teams, string.capwords(row['home_team'])), find(self.teams, string.capwords(row['away_team'])))
             if date not in self.dates:
                 self.dates.append(date)
                 self.games[date] = [game]
@@ -257,8 +251,3 @@ def find(sorted_list, name):
         else:
             low = middle + 1
     return -1
-
-# season = Season(2012)
-# Team.update_max_stats(season.teams)
-# for team in season.teams:
-#     print(team, team.raptor['total']/Team.max_raptor)
