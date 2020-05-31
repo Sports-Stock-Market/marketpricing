@@ -34,7 +34,6 @@ class Player:
             if len(stat) > 0:
                 self.raptor[category] = stat[0]
         self.war = self.adv['war_total']
-        self.status = True
     
     def __str__(self):
         return self.full_name
@@ -49,10 +48,6 @@ class Player:
         if self.last_name == other.last_name:
             return self.first_name < other.first_name
         return self.last_name < other.last_name
-
-    def injury(self):
-        self.status = False
-        self.team.update_all_raptor()
         
 class Team:
     stat_weights = {
@@ -75,6 +70,7 @@ class Team:
             self.city = self.city[0]
         self.name = self.full_name.split()[city_len]
         self.players = players
+        self.initial = proj/66
         self.rating = round((proj/33), 2)
         self.raptor = {
             'offense': 0,
@@ -82,7 +78,7 @@ class Team:
             'total': 0
         }
         self.stats = {
-            'W_PCT': proj/66,
+            'W_PCT': self.initial,
             'OFF_RATING': 100,
             'DEF_RATING': 100,
             'NET_RATING': 0,
@@ -93,6 +89,7 @@ class Team:
         self.proj_wins = 0
         self.proj_games = 0
         self.all_ratings = [self.rating]
+        self.injury_impact = {}
 
     def __str__(self):
         return self.full_name
@@ -111,17 +108,19 @@ class Team:
         self.info = row
         self.stats['OFF_RATING'] = self.info['OFF_RATING'] #+ self.raptor['offense']
         self.stats['DEF_RATING'] = self.info['DEF_RATING'] #+ self.raptor['defense']
-        self.stats['NET_RATING'] = self.info['NET_RATING'] + 10#+ self.raptor['total']
+        self.stats['NET_RATING'] = self.info['NET_RATING'] + 10 + self.raptor['total']
         self.stats['PIE'] = self.info['PIE']
 
     def update_wins(self):
         if self.updated > 0:
-            self.stats['W_PCT'] = (self.info['W'] + self.proj_wins)/(self.info['GP'] + self.proj_games)
+            prev_percent = 0.6*math.exp((-1/2)*self.info['GP'])
+            new_pct = (self.info['W'] + self.proj_wins)/(self.info['GP'] + self.proj_games)
+            self.stats['W_PCT'] = (prev_percent*self.initial) + ((1-prev_percent)*new_pct)
         # print(self.stats['W_PCT'])
 
     def calc_rating(self):
         weight = lambda stat: Team.stat_weights[stat][0] * (self.stats[stat]/Team.stat_weights[stat][1])
-        prev_percent = 0.4*math.exp((-1/2)*self.info['GP'])
+        prev_percent = 0.6*math.exp((-1/2)*self.info['GP'])
         # self.rating = round(sum([weight(stat) for stat in Team.stat_weights])+10, 2)
         new_rating = sum([weight(stat) for stat in Team.stat_weights])
         # print(self, self.stats, new_rating)
@@ -132,10 +131,19 @@ class Team:
         self.proj_games = 0
         return self.rating
     
+    def injury(player, start, end):
+        date = start
+        while date != end:
+            if date not in self.injury_impact:
+                self.injury_impact[date] = find(self.players, player).raptor['total']
+            else:
+                self.injury_impact[date] += find(self.players, player).raptor['total']
+            date = date + datetime.timedelta(days=1)
+
     def calc_raptor(self):
         for category in self.raptor:
             mpg_weight = lambda mpg: mpg**(1/4)
-            self.raptor[category] = sum([player.raptor[category]*mpg_weight(player.mpg) for player in self.players if player.status])
+            self.raptor[category] = sum([player.raptor[category]*mpg_weight(player.mpg) for player in self.players])
         return self.raptor
     
     @classmethod
@@ -171,7 +179,11 @@ class Game:
         # es_home = (self.home_team.stats['OFF_RATING'] + self.away_team.stats['DEF_RATING'])/2
         # es_away = (self.away_team.stats['OFF_RATING'] + self.home_team.stats['DEF_RATING'])/2
         es_home = self.home_team.stats['NET_RATING']
+        if self.date in self.home_team.injury_impact:
+            es_home -= self.home_team.injury_impact[self.date]
         es_away = self.away_team.stats['NET_RATING']
+        if self.date in self.away_team.injury_impact:
+            es_away -= self.away_team.injury_impact[self.date]
         margin = es_home - es_away
         vary = self.home_team.info['W_PCT'] - self.away_team.info['W_PCT']
         std = ((-2/10) * vary) + 14
@@ -185,7 +197,7 @@ class Game:
  
 class Season:
     def __init__(self, end_yr, num_games=82):
-        self.schedule = nba_data.get_season_schedule(end_yr)
+        self.schedule = nba_data.get_schedule(end_yr)
         self.yr = end_yr
         self.teams = init_teams(end_yr)
         self.dates = []
@@ -205,6 +217,13 @@ class Season:
             else:
                 self.games[date].append(game)
             limit -= 1
+        self.injuries = {}
+        for index, row in nba_data.get_injuries(end_yr).iterrows():
+            start = row['INJURED'].split['/']
+            end = row['RETURNED'].split['/']
+            start_date = datetime.date(start[2], start[0], start[1])
+            start_date = datetime.date(end[2], end[0], end[1])
+            self.injuries[start_date] = [row['TEAM'], row['Name'], end_date]
         
         # def has_game(self, name, date):
         #     team = find(self.teams, name)

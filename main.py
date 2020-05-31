@@ -9,6 +9,10 @@ import nba_data
 def simulate(end_yr, num_games):
     season = nba.Season(end_yr, num_games)
     for curr in range(len(season.dates)):
+        if season.dates[curr] in season.injuries:
+            injury = season.injuries[season.dates[curr]]
+            inj_team = nba.find(season.team, injury[0])
+            inj_team.injury(injury[1], season.dates[curr], injury[2])
         for index, row in season.stats[season.dates[curr]].iterrows():
             nba.find(season.teams, row['TEAM_NAME']).update_stats(row)
         for date in season.dates[curr:]:
@@ -36,7 +40,9 @@ def win_predictor(end_yr):
     return(correct/total)
 
 dates, ratings = simulate(2012, 66)
-for team in list(ratings.keys())[:5]:
-    plt.plot(dates, rating[team], label=team)
+dates.append('last')
+for team in list(ratings.keys()):
+    plt.plot(dates, ratings[team], label=team)
+plt.xticks(rotation=90, fontsize=8)
 plt.legend()
 plt.show()

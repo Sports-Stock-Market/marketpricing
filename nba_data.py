@@ -46,12 +46,20 @@ def raptor_from(end_yr):
     df = pd.read_csv('./player_info/raptors.csv')
     return df.loc[df['season'] == end_yr-1]
 
-def new_season_schedule_csv(end_yr):
+def new_schedule_csv(end_yr):
     path = './schedules/{}_schedule.csv'.format(format_year(end_yr))
     client.season_schedule(season_end_year=end_yr, output_type=OutputType.CSV, output_file_path=path)
 
-def get_season_schedule(end_yr):
+def get_schedule(end_yr):
     path = './schedules/{}_schedule.csv'.format(format_year(end_yr))
     if not os.path.isfile(path):
-        new_season_schedule_csv(end_yr)
+        new_schedule_csv(end_yr)
+    return pd.read_csv(path)
+
+def get_injuries(end_yr):
+    path = './injuries/{}.csv'.format(format_year(end_yr))
+    return pd.read_csv(path)
+
+def get_trades(end_yr):
+    path = './team_info/{}.csv'.format(format_year(end_yr))
     return pd.read_csv(path)
