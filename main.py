@@ -14,15 +14,14 @@ def simulate(end_yr, num_games):
         for date in season.dates[curr:]:
             for game in season.games[date]:
                 game.predict()
-        print(nba_data.format_date(season.dates[curr]))
         for team in season.teams:
             team.update_wins()   
-            nba.Team.update_max_stats(season.teams)
+            nba.Team.update_avg_stats(season.teams)
             team.calc_rating()
     ratings = {}
     for team in season.teams:
         ratings[team.full_name] = team.all_ratings
-    return ratings
+    return [list(map(nba_data.format_date, season.dates)), ratings]
 
 def win_predictor(end_yr):
     season = nba.Season(end_yr)
@@ -36,6 +35,8 @@ def win_predictor(end_yr):
             print([game.winner, game.predict()])
     return(correct/total)
 
-ratings = simulate(2012, 66)
-for team in ratings:
-    print(team, ratings[team])
+dates, ratings = simulate(2012, 66)
+for team in list(ratings.keys())[:5]:
+    plt.plot(dates, rating[team], label=team)
+plt.legend()
+plt.show()
