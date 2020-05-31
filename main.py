@@ -11,8 +11,13 @@ def simulate(end_yr, num_games):
     for curr in range(len(season.dates)):
         if season.dates[curr] in season.injuries:
             injury = season.injuries[season.dates[curr]]
-            inj_team = nba.find(season.team, injury[0])
+            inj_team = nba.find(season.teams, injury[0])
             inj_team.injury(injury[1], season.dates[curr], injury[2])
+        # if season.dates[curr] in season.trades:
+        #     trade = season.trades[season.dates[curr]]
+        #     team1 = nba.find(season.teams, trade[0])
+        #     team2 = nba.find(season.teams, trade[1])
+        #     nba.trade(nba.find(team1.players, trade[2]), nba.find(team2.players, trade[3]))
         for index, row in season.stats[season.dates[curr]].iterrows():
             nba.find(season.teams, row['TEAM_NAME']).update_stats(row)
         for date in season.dates[curr:]:

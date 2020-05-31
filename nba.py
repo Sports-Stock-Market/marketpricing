@@ -224,13 +224,11 @@ class Season:
             start_date = datetime.date(start[2], start[0], start[1])
             start_date = datetime.date(end[2], end[0], end[1])
             self.injuries[start_date] = [row['TEAM'], row['Name'], end_date]
-        
-        # def has_game(self, name, date):
-        #     team = find(self.teams, name)
-        #     for game in self.games[date]:
-        #         if game.includes(team):
-        #             return True
-        #     return False
+        # self.trades = {}
+        # for index, row in nba_data.get_trades(end_yr).iterrows():
+        #     start = row['INJURED'].split['/']
+        #     start_date = datetime.date(start[2], start[0], start[1])
+        #     self.trades[start_date] = [row['TEAM1'], row['TEAM2'], row['PLAYER1'], row['PLAYER2']]
 
 def trade(p1, p2):
     team1 = p1.team
@@ -239,6 +237,8 @@ def trade(p1, p2):
     team2.players[team2.players.index(p2)] = p1
     p1.team = p2.team
     p2.team = team1
+    team1.calc_raptor()
+    team2.calc_raptor()
 
 def init_players(end_yr):
     info_df = nba_data.players_stats_from(end_yr)
